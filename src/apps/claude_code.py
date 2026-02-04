@@ -3,15 +3,17 @@
 Claude Code 插件 - 多方式状态检测
 
 检测方式（优先级从高到低）：
-1. 窗口标题 - 实时状态（thinking/writing/executing/error）
-2. 进程存在性 - 存活检测（running/stopped）
-3. 文件活动 - 辅助判断（idle/working）
+1. 窗口标题（进程关联）- 实时状态
+2. 进程存在性 - 存活检测
+3. 文件活动 - 辅助判断
 """
 
 import asyncio
+import ctypes
 import re
 import sys
 import os
+import time
 
 # 添加父目录到路径，支持独立运行
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -28,8 +30,55 @@ from src.plugins.base import (
 )
 
 
+# Windows API 获取窗口进程 PID
+def get_window_pid(hwnd: int) -> Optional[int]:
+    """获取窗口对应的进程 PID"""
+    try:
+        pid = ctypes.c_ulong()
+        ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        return pid.value
+    except:
+        return None
+
+
+def get_all_windows() -> List[Dict]:
+    """获取所有窗口信息"""
+    windows = []
+
+    def enum_callback(hwnd, _):
+        if ctypes.windll.user32.IsWindowVisible(hwnd):
+            title_len = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+            if title_len > 0:
+                title = ctypes.create_unicode_buffer(title_len + 1)
+                ctypes.windll.user32.GetWindowTextW(hwnd, title, title_len + 1)
+                pid = get_window_pid(hwnd)
+                if pid:
+                    windows.append(
+                        {
+                            "hwnd": hwnd,
+                            "title": title.value,
+                            "pid": pid,
+                        }
+                    )
+        return True
+
+    try:
+        ctypes.windll.user32.EnumWindows(
+            ctypes.WINFUNCTYPE(
+                ctypes.c_bool, ctypes.c_int, ctypes.POINTER(ctypes.c_ulong)
+            )(enum_callback),
+            0,
+        )
+    except:
+        pass
+
+    return windows
+
+
 class ClaudeCodePlugin(BasePlugin):
     """Claude Code 多方式状态检测插件"""
+
+    _metadata: PluginMetadata  # 实例变量
 
     # 窗口标题关键词匹配（优先级从高到低）
     TITLE_PATTERNS = [
@@ -62,7 +111,7 @@ class ClaudeCodePlugin(BasePlugin):
 
         # 文件活动检测
         self._last_activity_time = 0.0
-        self._activity_threshold = 3.0  # 3秒内有活动视为非空闲
+        self._activity_threshold = 3.0
 
         self._metadata = PluginMetadata(
             name=name,
@@ -85,7 +134,7 @@ class ClaudeCodePlugin(BasePlugin):
     async def detect(self) -> Optional[StateEvent]:
         """检测 Claude Code 状态（多方式融合）"""
 
-        # 方式 1：窗口标题检测（最高优先级）
+        # 方式 1：窗口标题检测（通过进程 PID 关联）
         title_status, title_confidence, title_details = self._detect_by_window()
 
         # 方式 2：进程存在性检测
@@ -93,7 +142,7 @@ class ClaudeCodePlugin(BasePlugin):
 
         # 融合判断
         if title_status != Status.UNKNOWN:
-            # 窗口标题检测到状态，使用窗口标题
+            # 窗口标题检测到状态
             final_status = title_status
             final_confidence = title_confidence
             details = {"method": "window", "process_count": process_count}
@@ -104,15 +153,13 @@ class ClaudeCodePlugin(BasePlugin):
             final_confidence = 1.0
             details = {"method": "process", "process_count": 0}
         else:
-            # 进程存在但无窗口标题，使用进程状态 + 文件活动辅助
+            # 进程存在但无窗口标题
             file_status, file_active = self._detect_by_file_activity()
 
             if file_active:
-                # 有文件活动，视为 working
                 final_status = Status.WORKING
                 final_confidence = 0.75
             else:
-                # 无文件活动，根据进程状态判断
                 final_status = Status.RUNNING
                 final_confidence = 0.70
 
@@ -141,29 +188,45 @@ class ClaudeCodePlugin(BasePlugin):
         return None
 
     def _detect_by_window(self) -> Tuple[Status, float, Dict]:
-        """通过窗口标题检测状态"""
+        """通过窗口标题检测（进程 PID 关联）"""
         try:
-            import pygetwindow
+            # 1. 获取 Claude Code 进程的 PID 列表
+            claude_pids = set()
+            for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+                try:
+                    info = proc.info
+                    name = info.get("name", "").lower()
+                    cmdline = " ".join(info.get("cmdline") or []).lower()
 
-            # 获取所有窗口标题
-            all_titles = pygetwindow.getAllTitles()
+                    if any(kw in name or kw in cmdline for kw in self.PROCESS_NAMES):
+                        claude_pids.add(info["pid"])
+                except:
+                    pass
 
-            # 查找 Claude 相关窗口
-            for title in all_titles:
-                title_lower = title.lower()
+            if not claude_pids:
+                return Status.UNKNOWN, 0.0, {"error": "no claude process"}
 
-                # 检查是否包含 Claude 关键词
-                if any(kw in title_lower for kw in ["claude", "anthropic", "ollama"]):
-                    # 匹配状态模式
+            # 2. 获取所有窗口，找到 PID 匹配的窗口
+            windows = get_all_windows()
+
+            for win in windows:
+                if win["pid"] in claude_pids:
+                    # 找到 Claude 相关的窗口
+                    title_lower = win["title"].lower()
+
                     for pattern, status, confidence in self.TITLE_PATTERNS:
                         if re.search(pattern, title_lower, re.IGNORECASE):
-                            return status, confidence, {"window_title": title}
+                            return (
+                                status,
+                                confidence,
+                                {
+                                    "window_title": win["title"],
+                                    "window_pid": win["pid"],
+                                },
+                            )
 
-            return Status.UNKNOWN, 0.0, {}
+            return Status.UNKNOWN, 0.0, {"windows_found": len(windows)}
 
-        except ImportError:
-            # pygetwindow 未安装，跳过窗口检测
-            return Status.UNKNOWN, 0.0, {"error": "pygetwindow not installed"}
         except Exception as e:
             return Status.UNKNOWN, 0.0, {"error": str(e)}
 
@@ -178,8 +241,6 @@ class ClaudeCodePlugin(BasePlugin):
 
     def _detect_by_file_activity(self) -> Tuple[Status, bool]:
         """通过文件活动检测状态"""
-        import time
-
         time_since_activity = time.time() - self._last_activity_time
         is_active = time_since_activity < self._activity_threshold
 
@@ -198,7 +259,6 @@ class ClaudeCodePlugin(BasePlugin):
                 name_lower = name.lower()
                 cmdline_str = " ".join(cmdline).lower()
 
-                # 匹配 Claude Code 特征
                 if any(
                     kw in name_lower or kw in cmdline_str for kw in self.PROCESS_NAMES
                 ):
@@ -208,18 +268,6 @@ class ClaudeCodePlugin(BasePlugin):
                 continue
 
         return processes if processes else None
-
-    def _get_cpu_usage(self, processes: List[psutil.Process]) -> float:
-        """计算总 CPU 占用"""
-        total_cpu = 0.0
-
-        for p in processes:
-            try:
-                total_cpu += p.cpu_percent(interval=0.1)
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                continue
-
-        return total_cpu
 
     def start(self) -> None:
         """启动监控"""
@@ -232,9 +280,7 @@ class ClaudeCodePlugin(BasePlugin):
         print(f"[ClaudeCodePlugin:{self.name}] Stopped")
 
     def on_file_activity(self) -> None:
-        """接收文件活动事件（外部调用）"""
-        import time
-
+        """接收文件活动事件"""
         self._last_activity_time = time.time()
 
 
