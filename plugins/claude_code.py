@@ -10,10 +10,16 @@ Claude Code 插件 - 监控 Claude Code 进程状态
 """
 
 import asyncio
+import sys
+import os
+
+# 添加父目录到路径，支持独立运行
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import psutil
 from typing import List, Optional
 
-from .base import (
+from src.plugins.base import (
     BasePlugin,
     PluginMetadata,
     PluginType,

@@ -1,20 +1,25 @@
-# 插件系统 - v3.1
+# 插件框架 - v3.1
 
 **目录**: `src/plugins/`  
-**用途**: AI 工具监控插件实现
+**用途**: 插件框架代码（基类、通用插件）
 
 ---
 
 ## 目录结构
 
 ```
-src/plugins/
-├── AGENTS.md           # 本文件
-├── __init__.py         # 模块导出
-├── __main__.py         # 插件独立运行入口
-├── base.py             # 插件基类 + 接口
-├── claude_code.py      # Claude Code 插件 ✅
-└── process.py          # 进程监控插件（通用）
+src/plugins/                    # 插件框架
+├── AGENTS.md                  # 本文件
+├── __init__.py                # 模块导出
+├── __main__.py                # 独立运行入口
+├── base.py                    # 插件基类 + 接口
+├── process.py                 # 通用进程监控插件
+└── window.py                  # 窗口监控插件（待实现）
+
+plugins/                       # 具体软件插件（根目录）
+├── __init__.py
+├── claude_code.py             # Claude Code 插件 ✅
+└── opencode.py                # OpenCode 插件（待实现）
 ```
 
 ---
@@ -23,10 +28,9 @@ src/plugins/
 
 | 任务 | 文件 | 说明 |
 |------|------|------|
-| 创建插件 | `base.py` | 继承 BasePlugin ABC |
-| 进程监控 | `process.py` | 参考实现 |
-| Claude Code | `claude_code.py` | Claude Code 专用插件 |
-| 状态格式 | `base.py` | StateEvent 数据类 |
+| 插件基类 | `src/plugins/base.py` | BasePlugin ABC |
+| 通用进程插件 | `src/plugins/process.py` | 可复用的进程监控 |
+| Claude Code 插件 | `plugins/claude_code.py` | 具体软件实现 |
 
 ---
 
@@ -39,7 +43,7 @@ src/plugins/
 [插件名称] - [简要描述]
 """
 
-from .base import BasePlugin, PluginMetadata, PluginType, StateEvent, Status
+from src.plugins.base import BasePlugin, PluginMetadata, PluginType, StateEvent, Status
 
 class MyPlugin(BasePlugin):
     """我的自定义插件"""
@@ -92,7 +96,7 @@ class MyPlugin(BasePlugin):
 ### 运行命令
 
 ```bash
-# 运行 Claude Code 插件（默认）
+# 运行 Claude Code 插件（从 plugins/ 目录加载）
 python -m src.plugins.claude_code
 
 # 运行一次并退出
@@ -124,25 +128,23 @@ python -m src.plugins.claude_code --help
 
 [2024-01-01 12:00:00] 空闲 (confidence: 90%) - cpu: 0.3%, 进程: 4
 [2024-01-01 12:00:02] 思考中 (confidence: 80%) - cpu: 8.5%, 进程: 4
-[2024-01-01 12:00:04] 工作中 (confidence: 85%) - cpu: 35.2%, 进程: 4
 ...
 ```
 
 ---
 
-## PLUGINS（插件）
+## 插件清单
 
-### ClaudeCodePlugin（已完成）✅
-- **文件**: `claude_code.py`
-- **类型**: PluginType.PROCESS
-- **检测方式**: CPU 占用（psutil）
-- **进程特征**: claude, anthropic
-- **状态**: idle → running → thinking → working
-- **状态**: ✅ 已实现、可测试
+### 框架插件 (src/plugins/)
 
-### ProcessPlugin（已完成）
-- **文件**: `process.py`
-- **类型**: PluginType.PROCESS
-- **检测方式**: CPU 占用（psutil）
-- **状态**: idle → running → thinking → working
-- **状态**: ✅ 已实现、可测试
+| 插件 | 文件 | 说明 | 状态 |
+|------|------|------|------|
+| ProcessPlugin | process.py | 通用进程监控 | ✅ 已完成 |
+| WindowPlugin | window.py | 窗口监控 | ⏳ 待实现 |
+
+### 具体软件插件 (plugins/)
+
+| 插件 | 文件 | 支持软件 | 状态 |
+|------|------|----------|------|
+| ClaudeCodePlugin | claude_code.py | Claude Code | ✅ 已完成 |
+| OpenCodePlugin | opencode.py | OpenCode | ⏳ 待实现 |

@@ -5,10 +5,10 @@
 支持直接运行插件进行测试和调试。
 
 用法：
-    python -m src.plugins.claude_code
-    python -m src.plugins.claude_code --interval 1.0
-    python -m src.plugins.process --process-names node,python
-    python -m src.plugins.claude_code --help
+    python -m src.plugins.claude_code         # 运行 Claude Code 插件
+    python -m src.plugins.claude_code --once  # 运行一次
+    python -m src.plugins.process              # 运行通用进程插件
+    python -m src.plugins.process --help       # 显示帮助
 """
 
 import argparse
@@ -20,14 +20,21 @@ from typing import Optional
 
 def create_plugin(name: str, **kwargs):
     """根据名称创建插件实例"""
+    # 具体软件插件 (从 plugins/ 目录加载)
     if name == "claude_code":
-        from .claude_code import ClaudeCodePlugin, create_claude_code_plugin
+        try:
+            from plugins.claude_code import ClaudeCodePlugin, create_claude_code_plugin
 
-        return create_claude_code_plugin(**kwargs)
+            return create_claude_code_plugin(**kwargs)
+        except ImportError:
+            raise ImportError("请确保 plugins/ 目录存在且包含 claude_code.py")
+
+    # 框架插件 (从 src/plugins/ 目录加载)
     elif name == "process":
         from .process import ProcessPlugin, create_process_plugin
 
         return create_process_plugin(name=name, **kwargs)
+
     else:
         raise ValueError(f"Unknown plugin: {name}")
 
