@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:mp.weixin.qq.com)",
+      "WebSearch",
+      "Bash(curl:*)",
+      "mcp__open-websearch__search",
+      "mcp__exa__web_search_exa"
+    ]
+  }
+}
