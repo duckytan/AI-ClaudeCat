@@ -172,6 +172,10 @@ AI-ClaudeCat/
 │   │   ├── base.py                      # 插件基类 ⭐
 │   │   ├── process.py                   # 通用进程监控插件
 │   │   └── window.py                    # 窗口监控插件（待实现）
+│   ├── apps/                            # 具体软件插件
+│   │   ├── __init__.py
+│   │   ├── claude_code.py               # Claude Code 插件 ✅
+│   │   └── opencode.py                  # OpenCode 插件（待实现）
 │   ├── middleware/                       # 中间件 (待实现)
 │   │   ├── core.py
 │   │   ├── event_bus.py
@@ -180,10 +184,6 @@ AI-ClaudeCat/
 │       ├── websocket.py
 │       ├── http.py
 │       └── redis.py
-├── plugins/                              # 具体软件插件
-│   ├── __init__.py
-│   ├── claude_code.py                   # Claude Code 插件 ✅
-│   └── opencode.py                      # OpenCode 插件（待实现）
 └── frontend/                            # 前端 (待开发)
 │   ├── middleware/                       # 中间件 (待实现)
 │   │   ├── core.py

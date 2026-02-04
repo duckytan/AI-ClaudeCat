@@ -16,7 +16,7 @@ src/plugins/                    # 插件框架
 ├── process.py                 # 通用进程监控插件
 └── window.py                  # 窗口监控插件（待实现）
 
-plugins/                       # 具体软件插件（根目录）
+src/apps/                       # 具体软件插件
 ├── __init__.py
 ├── claude_code.py             # Claude Code 插件 ✅
 └── opencode.py                # OpenCode 插件（待实现）

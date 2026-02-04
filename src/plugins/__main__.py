@@ -20,14 +20,14 @@ from typing import Optional
 
 def create_plugin(name: str, **kwargs):
     """根据名称创建插件实例"""
-    # 具体软件插件 (从 plugins/ 目录加载)
+    # 具体软件插件 (从 src/apps/ 目录加载)
     if name == "claude_code":
         try:
-            from plugins.claude_code import ClaudeCodePlugin, create_claude_code_plugin
+            from src.apps.claude_code import ClaudeCodePlugin, create_claude_code_plugin
 
             return create_claude_code_plugin(**kwargs)
         except ImportError:
-            raise ImportError("请确保 plugins/ 目录存在且包含 claude_code.py")
+            raise ImportError("请确保 src/apps/ 目录存在且包含 claude_code.py")
 
     # 框架插件 (从 src/plugins/ 目录加载)
     elif name == "process":
