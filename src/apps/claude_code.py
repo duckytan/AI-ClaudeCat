@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Claude Code 插件 - 监控 Claude Code 进程状态
+Claude Code 插件 - 多方式状态检测
 
-通过进程 CPU 占用检测 Claude Code 的工作状态：
-- idle: CPU < 0.5% (待机)
-- running: CPU < 3% (运行中)
-- thinking: CPU < 15% (思考中)
-- working: CPU >= 15% (工作中)
+检测方式（优先级从高到低）：
+1. 窗口标题 - 实时状态（thinking/writing/executing/error）
+2. 进程存在性 - 存活检测（running/stopped）
+3. 文件活动 - 辅助判断（idle/working）
 """
 
 import asyncio
+import re
 import sys
 import os
 
@@ -17,7 +17,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import psutil
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from src.plugins.base import (
     BasePlugin,
@@ -29,18 +29,22 @@ from src.plugins.base import (
 
 
 class ClaudeCodePlugin(BasePlugin):
-    """Claude Code 进程监控插件"""
+    """Claude Code 多方式状态检测插件"""
 
-    # 状态阈值配置 (CPU 百分比)
-    THRESHOLDS = {
-        "idle": 0.5,  # CPU < 0.5% 视为空闲
-        "running": 3.0,  # CPU < 3% 视为运行中
-        "thinking": 15.0,  # CPU < 15% 视为思考中
-        "working": 50.0,  # CPU < 50% 视为工作中
-    }
+    # 窗口标题关键词匹配（优先级从高到低）
+    TITLE_PATTERNS = [
+        # 错误状态 - 最高优先级
+        (r"error|错误|failed|失败", Status.ERROR, 0.95),
+        # 执行状态
+        (r"executing|执行|run|运行|bash|cmd", Status.EXECUTING, 0.90),
+        # 工作状态
+        (r"writing|写入|write|edit|编辑|save|保存", Status.WORKING, 0.85),
+        # 思考状态
+        (r"thinking|思考|analyzing|分析|processing|处理", Status.THINKING, 0.80),
+    ]
 
     # Claude Code 进程特征
-    PROCESS_NAMES = ["claude", "anthropic"]
+    PROCESS_NAMES = ["claude", "anthropic", "ollama"]
 
     def __init__(
         self,
@@ -55,14 +59,17 @@ class ClaudeCodePlugin(BasePlugin):
         super().__init__(name)
         self.check_interval = check_interval
         self._last_status: Optional[Status] = None
-        self._last_cpu_percent: float = 0.0
+
+        # 文件活动检测
+        self._last_activity_time = 0.0
+        self._activity_threshold = 3.0  # 3秒内有活动视为非空闲
 
         self._metadata = PluginMetadata(
             name=name,
-            version="1.0.0",
+            version="2.0.0",
             author="AI-ClaudeCat",
-            description="Monitor Claude Code process status via CPU usage",
-            plugin_type=PluginType.PROCESS,
+            description="Monitor Claude Code via process + window title + file activity",
+            plugin_type=PluginType.CUSTOM,
             supported_software=["Claude Code", "Claude"],
             dependencies=["psutil"],
         )
@@ -72,50 +79,111 @@ class ClaudeCodePlugin(BasePlugin):
         return self._metadata
 
     def check_available(self) -> bool:
-        """检查 Claude Code 进程是否存在"""
+        """检查 Claude Code 是否可用（进程存在）"""
         return self._find_claude_processes() is not None
 
     async def detect(self) -> Optional[StateEvent]:
-        """检测 Claude Code 状态"""
-        processes = self._find_claude_processes()
+        """检测 Claude Code 状态（多方式融合）"""
 
-        if not processes:
-            status = Status.STOPPED
-            confidence = 1.0
-            details = {"process_count": 0}
+        # 方式 1：窗口标题检测（最高优先级）
+        title_status, title_confidence, title_details = self._detect_by_window()
+
+        # 方式 2：进程存在性检测
+        process_status, process_confidence, process_count = self._detect_by_process()
+
+        # 融合判断
+        if title_status != Status.UNKNOWN:
+            # 窗口标题检测到状态，使用窗口标题
+            final_status = title_status
+            final_confidence = title_confidence
+            details = {"method": "window", "process_count": process_count}
+            details.update(title_details)
+        elif process_status == Status.STOPPED:
+            # 进程不存在
+            final_status = Status.STOPPED
+            final_confidence = 1.0
+            details = {"method": "process", "process_count": 0}
         else:
-            # 计算总 CPU 占用
-            cpu_percent = self._get_cpu_usage(processes)
-            process_count = len(processes)
+            # 进程存在但无窗口标题，使用进程状态 + 文件活动辅助
+            file_status, file_active = self._detect_by_file_activity()
 
-            # 判断状态
-            status = self._judge_status(cpu_percent)
-            confidence = self._calculate_confidence(status, cpu_percent, process_count)
+            if file_active:
+                # 有文件活动，视为 working
+                final_status = Status.WORKING
+                final_confidence = 0.75
+            else:
+                # 无文件活动，根据进程状态判断
+                final_status = Status.RUNNING
+                final_confidence = 0.70
 
             details = {
+                "method": "process",
                 "process_count": process_count,
-                "cpu_percent": round(cpu_percent, 2),
+                "file_active": file_active,
             }
 
-            self._last_cpu_percent = cpu_percent
-
         # 只有状态变化才返回事件
-        if status != self._last_status:
-            self._last_status = status
+        if final_status != self._last_status:
+            self._last_status = final_status
 
             event = StateEvent(
-                status=status,
-                confidence=confidence,
+                status=final_status,
+                confidence=final_confidence,
                 source_plugin=self.name,
-                source_type=PluginType.PROCESS,
+                source_type=PluginType.CUSTOM,
                 details=details,
-                priority=1,
+                priority=2,
             )
 
             self._emit(event)
             return event
 
         return None
+
+    def _detect_by_window(self) -> Tuple[Status, float, Dict]:
+        """通过窗口标题检测状态"""
+        try:
+            import pygetwindow
+
+            # 获取所有窗口标题
+            all_titles = pygetwindow.getAllTitles()
+
+            # 查找 Claude 相关窗口
+            for title in all_titles:
+                title_lower = title.lower()
+
+                # 检查是否包含 Claude 关键词
+                if any(kw in title_lower for kw in ["claude", "anthropic", "ollama"]):
+                    # 匹配状态模式
+                    for pattern, status, confidence in self.TITLE_PATTERNS:
+                        if re.search(pattern, title_lower, re.IGNORECASE):
+                            return status, confidence, {"window_title": title}
+
+            return Status.UNKNOWN, 0.0, {}
+
+        except ImportError:
+            # pygetwindow 未安装，跳过窗口检测
+            return Status.UNKNOWN, 0.0, {"error": "pygetwindow not installed"}
+        except Exception as e:
+            return Status.UNKNOWN, 0.0, {"error": str(e)}
+
+    def _detect_by_process(self) -> Tuple[Status, float, int]:
+        """通过进程存在性检测状态"""
+        processes = self._find_claude_processes()
+
+        if not processes:
+            return Status.STOPPED, 1.0, 0
+
+        return Status.RUNNING, 0.7, len(processes)
+
+    def _detect_by_file_activity(self) -> Tuple[Status, bool]:
+        """通过文件活动检测状态"""
+        import time
+
+        time_since_activity = time.time() - self._last_activity_time
+        is_active = time_since_activity < self._activity_threshold
+
+        return Status.WORKING if is_active else Status.IDLE, is_active
 
     def _find_claude_processes(self) -> Optional[List[psutil.Process]]:
         """查找 Claude Code 相关进程"""
@@ -153,44 +221,21 @@ class ClaudeCodePlugin(BasePlugin):
 
         return total_cpu
 
-    def _judge_status(self, cpu_percent: float) -> Status:
-        """根据 CPU 占用判断状态"""
-        if cpu_percent < self.THRESHOLDS["idle"]:
-            return Status.IDLE
-        elif cpu_percent < self.THRESHOLDS["running"]:
-            return Status.RUNNING
-        elif cpu_percent < self.THRESHOLDS["thinking"]:
-            return Status.THINKING
-        elif cpu_percent < self.THRESHOLDS["working"]:
-            return Status.WORKING
-        else:
-            return Status.WORKING
-
-    def _calculate_confidence(
-        self, status: Status, cpu_percent: float, process_count: int
-    ) -> float:
-        """计算置信度"""
-        if status == Status.STOPPED:
-            return 1.0
-        elif status == Status.IDLE:
-            return 0.9
-        elif status == Status.RUNNING:
-            return 0.7
-        elif status == Status.THINKING:
-            return 0.8
-        elif status == Status.WORKING:
-            return 0.85
-        return 0.5
-
     def start(self) -> None:
         """启动监控"""
         self._running = True
-        print(f"[ClaudeCodePlugin:{self.name}] Started")
+        print(f"[ClaudeCodePlugin:{self.name}] Started (multi-mode detection)")
 
     def stop(self) -> None:
         """停止监控"""
         self._running = False
         print(f"[ClaudeCodePlugin:{self.name}] Stopped")
+
+    def on_file_activity(self) -> None:
+        """接收文件活动事件（外部调用）"""
+        import time
+
+        self._last_activity_time = time.time()
 
 
 def create_claude_code_plugin(
