@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "date": "2026-02-04",
+  "architecture": "v1.0 - Basic Monitoring",
+  "status": "DEPRECATED",
+  "migration_date": "2026-02-04",
+  "replaced_by": "v3.1 Plugin-based Architecture",
+  "summary": "Initial prototype with simple process/window/file monitoring",
+  "key_differences_from_v3_1": [
+    "No plugin architecture - hardcoded monitors",
+    "Synchronous design - no async support",
+    "Simple callback system - no event bus",
+    "No output adapters (WebSocket/HTTP/Redis)",
+    "No proper plugin registry or metadata",
+    "Status fusion is tightly coupled"
+  ],
+  "files": [
+    "src/monitor/base.py",
+    "src/monitor/process_monitor.py",
+    "src/monitor/window_monitor.py",
+    "src/monitor/file_monitor.py",
+    "src/monitor/status_fusion.py",
+    "src/monitor/__init__.py"
+  ]
+}

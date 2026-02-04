@@ -1,6 +1,6 @@
 # Claude 桌面宠物项目
 
-**状态**：架构设计阶段
+**状态**：v3.1 核心实现中
 **最后更新**：2026-02-04
 
 ---
@@ -115,29 +115,38 @@ class BasePlugin(ABC):
 
 ```
 AI-ClaudeCat/
-├── CLAUDE.md                    # 本文档 ⭐
+├── CLAUDE.md                              # 本文档 ⭐
 ├── docs/
-│   ├── 完整架构设计.md          # v3.0 总体架构
-│   ├── 插件化架构详细设计.md    # v3.1 插件和输出详细设计 ⭐
-│   └── research_notes.md        # 技术研究笔记
-├── docs-archive/                # 历史文档
-├── scripts/                    # 工具脚本
+│   ├── 完整架构设计.md                    # v3.0 总体架构
+│   ├── 插件化架构详细设计.md              # v3.1 插件和输出详细设计 ⭐
+│   └── research_notes.md                  # 技术研究笔记
+├── docs-archive/                          # 历史文档
+│   └── old-prototype-v1.0/                # v1.0 原型 (已废弃)
+│       ├── VERSION.json                   # 版本元信息
+│       ├── README.md                      # 归档说明
+│       ├── EXPERIENCE_SUMMARY.md          # 经验总结 ⭐
+│       └── src/monitor/                  # 旧版原型代码
+├── scripts/                              # 工具脚本
 │   ├── test_fusion.py
 │   └── monitor_opencode.py
-├── src/                        # 源代码
-│   └── monitor/
-│       ├── __init__.py
-│       ├── base.py             # 插件基类
-│       ├── process_monitor.py  # 进程监控
-│       ├── file_monitor.py     # 文件监控
-│       ├── window_monitor.py   # 窗口监控
-│       └── status_fusion.py    # 状态融合
-├── plugins/                     # 插件目录（待创建）
-│   ├── __init__.py
-│   ├── claude_code.py
-│   ├── opencode.py
-│   └── custom/
-└── frontend/                   # 前端（待开发）
+├── src/                                  # 源代码
+│   ├── plugins/                          # 插件 (v3.1)
+│   │   ├── __init__.py
+│   │   ├── base.py                      # 插件基类 ⭐
+│   │   ├── process.py                   # 进程监控插件
+│   │   └── ...
+│   ├── middleware/                       # 中间件 (待实现)
+│   │   ├── core.py
+│   │   ├── event_bus.py
+│   │   └── fusion.py
+│   └── adapters/                        # 输出适配器 (待实现)
+│       ├── websocket.py
+│       ├── http.py
+│       └── redis.py
+├── plugins/                              # 具体软件插件
+│   ├── claude_code.py                   # Claude Code 插件
+│   └── opencode.py                      # OpenCode 插件
+└── frontend/                            # 前端 (待开发)
 ```
 
 ---
@@ -150,10 +159,11 @@ AI-ClaudeCat/
 - [x] 插件接口设计文档
 - [x] 输出模式设计文档
 - [x] 技术研究笔记
+- [x] 插件基类 (src/plugins/base.py)
+- [x] 进程监控插件 (src/plugins/process.py)
 
 ### 进行中 🔄
 
-- [ ] 实现插件基类
 - [ ] 实现中间件核心
 - [ ] 实现 WebSocket 输出适配器
 - [ ] 实现 Claude Code 插件
@@ -166,6 +176,10 @@ AI-ClaudeCat/
 - [ ] 前端 GUI
 - [ ] 动画引擎
 - [ ] 配置系统
+
+### 已废弃 ❌
+
+- [x] v1.0 原型 (src/monitor/) → 迁移至 docs-archive/old-prototype-v1.0/
 
 ---
 
@@ -213,16 +227,20 @@ python scripts/test_fusion.py
 
 # 测试 OpenCode 监控
 python scripts/monitor_opencode.py
+
+# 查看旧版原型经验总结
+cat docs-archive/old-prototype-v1.0/EXPERIENCE_SUMMARY.md
 ```
 
 ---
 
 ## 注意事项
 
-- 项目处于**架构设计阶段**，核心代码待实现
+- 项目处于**核心实现阶段**，插件基类已完成
 - 插件系统支持自由扩展，可适配多种软件
 - 前端与后端通过标准协议解耦
-- 历史文档已移至 `docs-archive/`
+- v1.0 原型已迁移至 `docs-archive/old-prototype-v1.0/`
+- **迁移经验**: 详见 `docs-archive/old-prototype-v1.0/EXPERIENCE_SUMMARY.md`
 
 ---
 
