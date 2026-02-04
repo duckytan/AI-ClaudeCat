@@ -12,6 +12,8 @@ from .base import (
     Status,
 )
 
+from .claude_code import ClaudeCodePlugin, create_claude_code_plugin
+
 __all__ = [
     "BasePlugin",
     "PluginMetadata",
@@ -19,4 +21,6 @@ __all__ = [
     "PluginType",
     "StateEvent",
     "Status",
+    "ClaudeCodePlugin",
+    "create_claude_code_plugin",
 ]

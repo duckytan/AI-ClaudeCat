@@ -170,6 +170,7 @@ AI-ClaudeCat/
 │   │   ├── __init__.py
 │   │   ├── __main__.py                   # 插件独立运行入口
 │   │   ├── base.py                      # 插件基类 ⭐
+│   │   ├── claude_code.py               # Claude Code 插件 ✅
 │   │   ├── process.py                   # 进程监控插件
 │   │   └── window.py                    # 窗口监控插件
 │   ├── middleware/                       # 中间件 (待实现)
@@ -195,12 +196,13 @@ AI-ClaudeCat/
 - [x] 技术研究笔记
 - [x] 插件基类 (src/plugins/base.py)
 - [x] 进程监控插件 (src/plugins/process.py)
+- [x] Claude Code 插件 (src/plugins/claude_code.py) ✅
+- [x] 插件独立运行入口 (src/plugins/__main__.py)
 
 ### 进行中 🔄
 
 - [ ] 实现中间件核心
 - [ ] 实现 WebSocket 输出适配器
-- [ ] 实现 Claude Code 插件
 - [ ] 实现 OpenCode 插件
 
 ### 待完成 ⏳
