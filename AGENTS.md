@@ -16,17 +16,17 @@ AI-ClaudeCat 是一款 v3.1 桌面宠物应用，通过插件化架构监控 AI 
 
 ```
 AI-ClaudeCat/
-├── AGENTS.md                           # 本文件 ⭐
-├── CLAUDE.md                           # 主项目文档（中文）
+├── AGENTS.md ⭐
+├──                           # 本文件 CLAUDE.md                           # 主项目文档（中文）
 ├── docs/                               # 架构文档
 │   ├── 完整架构设计.md                 # v3.0 总体架构
 │   ├── 插件化架构详细设计.md           # v3.1 插件设计
 │   └── research_notes.md               # 技术研究笔记
-├── scripts/                            # 工具/调试脚本
-├── src/
+├── src/                               # 源代码
 │   ├── plugins/                        # 插件实现
 │   │   ├── base.py                    # BasePlugin、StateEvent、Status
-│   │   └── process.py                 # ProcessPlugin（CPU 监控）
+│   │   ├── process.py                 # ProcessPlugin（CPU 监控）
+│   │   └── window.py                  # 窗口监控插件
 │   ├── middleware/                     # 待实现
 │   │   ├── core.py
 │   │   ├── event_bus.py
@@ -49,7 +49,6 @@ AI-ClaudeCat/
 | Process monitoring | `src/plugins/process.py` | ProcessPlugin with CPU thresholds |
 | Architecture docs | `docs/插件化架构详细设计.md` | Complete v3.1 spec |
 | Migration notes | `docs-archive/old-prototype-v1.0/EXPERIENCE_SUMMARY.md` | v1.0 lessons |
-| Debug scripts | `scripts/` | test_fusion.py、monitor_opencode.py |
 
 ---
 
@@ -141,21 +140,6 @@ class ProcessPlugin(BasePlugin):
             plugin_type=PluginType.PROCESS,
             ...
         )
-```
-
----
-
-## COMMANDS（命令）
-
-```bash
-# 运行状态测试
-python scripts/test_fusion.py
-
-# 测试 OpenCode 监控
-python scripts/monitor_opencode.py
-
-# 查看迁移经验总结
-cat docs-archive/old-prototype-v1.0/EXPERIENCE_SUMMARY.md
 ```
 
 ---

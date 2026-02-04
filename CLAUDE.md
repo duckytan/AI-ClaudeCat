@@ -139,15 +139,12 @@ AI-ClaudeCat/
 │       ├── README.md                      # 归档说明
 │       ├── EXPERIENCE_SUMMARY.md          # 经验总结 ⭐
 │       └── src/monitor/                  # 旧版原型代码
-├── scripts/                              # 工具脚本
-│   ├── test_fusion.py
-│   └── monitor_opencode.py
 ├── src/                                  # 源代码
 │   ├── plugins/                          # 插件 (v3.1)
 │   │   ├── __init__.py
 │   │   ├── base.py                      # 插件基类 ⭐
 │   │   ├── process.py                   # 进程监控插件
-│   │   └── ...
+│   │   └── window.py                    # 窗口监控插件
 │   ├── middleware/                       # 中间件 (待实现)
 │   │   ├── core.py
 │   │   ├── event_bus.py
@@ -156,9 +153,6 @@ AI-ClaudeCat/
 │       ├── websocket.py
 │       ├── http.py
 │       └── redis.py
-├── plugins/                              # 具体软件插件
-│   ├── claude_code.py                   # Claude Code 插件
-│   └── opencode.py                      # OpenCode 插件
 └── frontend/                            # 前端 (待开发)
 ```
 
@@ -192,7 +186,7 @@ AI-ClaudeCat/
 
 ### 已废弃 ❌
 
-- [x] v1.0 原型 (src/monitor/) → 迁移至 docs-archive/old-prototype-v1.0/
+- [x] v1.0 原型 (src/monitor/, scripts/) → docs-archive/old-prototype-v1.0/
 
 ---
 
@@ -229,21 +223,6 @@ AI-ClaudeCat/
 | **docs/完整架构设计.md** | 总体架构、组件设计 | ⭐⭐ |
 | **docs/research_notes.md** | 技术研究、代码示例 | ⭐⭐ |
 | **src/** | 源代码 | ⭐⭐⭐ |
-
----
-
-## 常用命令
-
-```bash
-# 运行状态监控测试
-python scripts/test_fusion.py
-
-# 测试 OpenCode 监控
-python scripts/monitor_opencode.py
-
-# 查看旧版原型经验总结
-cat docs-archive/old-prototype-v1.0/EXPERIENCE_SUMMARY.md
-```
 
 ---
 
