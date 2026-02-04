@@ -96,6 +96,32 @@ class BasePlugin(ABC):
         """接收其他插件事件（可选）"""
 ```
 
+### 独立运行
+
+插件支持独立运行，方便开发和测试。
+
+```bash
+# 运行进程监控插件（默认配置）
+python -m src.plugins.process
+
+# 指定监控进程名称
+python -m src.plugins.process --process-names claude,anthropic
+
+# 指定检测间隔（秒）
+python -m src.plugins.process --interval 1.0
+
+# 显示帮助
+python -m src.plugins.process --help
+```
+
+**运行效果**：
+```
+[2024-01-01 12:00:00] IDLE (confidence: 90%) - cpu: 0.3%
+[2024-01-01 12:00:02] THINKING (confidence: 80%) - cpu: 8.5%
+[2024-01-01 12:00:04] WORKING (confidence: 85%) - cpu: 35.2%
+...
+```
+
 ---
 
 ## 输出模式
@@ -142,6 +168,7 @@ AI-ClaudeCat/
 ├── src/                                  # 源代码
 │   ├── plugins/                          # 插件 (v3.1)
 │   │   ├── __init__.py
+│   │   ├── __main__.py                   # 插件独立运行入口
 │   │   ├── base.py                      # 插件基类 ⭐
 │   │   ├── process.py                   # 进程监控插件
 │   │   └── window.py                    # 窗口监控插件
