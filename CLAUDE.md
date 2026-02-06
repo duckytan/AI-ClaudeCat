@@ -1,8 +1,8 @@
-# AI-ClaudeCat v4.0 - 项目文档
+# AI-ClaudeCat v4.1.2 - 项目文档
 
-**版本**: v4.0.0  
+**版本**: v4.1.2  
 **最后更新**: 2026-02-06  
-**状态**: 🚀 重构中（采用日志监控方案）
+**状态**: 🚀 Production Ready（27 种工具支持，100% PixelHQ 覆盖）
 
 ---
 
@@ -42,15 +42,22 @@ AI-ClaudeCat 是一款专为 **Claude Code** 设计的智能状态监控工具�
 
 ## 核心特性
 
-### ✅ 已实现（v4.0）
+### ✅ 已实现（v4.1.2）
 
-#### 1. **日志监控**（核心）
+#### 1. **工具支持**（核心亮点）
+- 🎯 **27 种工具支持** - 完全覆盖 PixelHQ-bridge 工具
+- 🔌 **MCP 通用支持** - 自动识别 `mcp__*` 前缀的任意 MCP 工具
+- 📋 **计划模式支持** - `EnterPlanMode`, `ExitPlanMode`
+- 📓 **Notebook 编辑** - `NotebookEdit` 工具支持
+- 🎨 **特殊输出** - 每个工具都有自定义图标和输出
+
+#### 2. **日志监控**（核心）
 - 📁 监控 `~/.claude/projects/**/*.jsonl`
 - 🔄 增量读取（记录文件位置，低 CPU 占用）
 - 📝 JSONL 解析（官方格式，稳定可靠）
 - 🎯 实时性高（文件变化立即触发）
 
-#### 2. **工具级状态检测**
+#### 3. **工具级状态检测**
 - **Thinking** - AI 思考中（`thinking` 块）
 - **Responding** - AI 回复中（`text` 块）
 - **Reading** - 读取文件（`Read` 工具）
@@ -62,7 +69,7 @@ AI-ClaudeCat 是一款专为 **Claude Code** 设计的智能状态监控工具�
 - **Spawning** - 派生子 Agent（`Task` 工具）
 - **Waiting** - 等待用户输入（`AskUserQuestion` 工具）
 
-#### 3. **Token 统计**
+#### 4. **Token 统计**
 - 📊 输入 Token（input_tokens）
 - 📊 输出 Token（output_tokens）
 - 📊 缓存读取（cache_read_input_tokens）
@@ -70,20 +77,20 @@ AI-ClaudeCat 是一款专为 **Claude Code** 设计的智能状态监控工具�
 - 📊 缓存命中率计算
 - 📊 平均每分钟使用量
 
-#### 4. **隐私保护**
+#### 5. **隐私保护**
 - 🔒 白名单过滤（只输出允许的字段）
 - 🔒 文件路径 → 只保留文件名
 - 🔒 命令内容 → 不输出
 - 🔒 文件内容 → 不输出
 - 🔒 只保留元数据（工具名称、状态、Token）
 
-#### 5. **多输出协议**
+#### 6. **多输出协议**
 - 🌐 **WebSocket** (ws://127.0.0.1:8765) - 实时推送
 - 🌐 **HTTP REST API** (http://127.0.0.1:8080) - 查询接口
 - 📝 **Stdout** - 终端输出（调试）
 - 💾 **SQLite** - 历史记录存储
 
-#### 6. **事件历史**
+#### 7. **事件历史**
 - 💾 SQLite 数据库存储
 - 🔍 时间范围查询
 - 📊 统计分析接口
@@ -93,12 +100,12 @@ AI-ClaudeCat 是一款专为 **Claude Code** 设计的智能状态监控工具�
 
 ## 技术架构
 
-### v4.0 架构图
+### v4.1.2 架构图
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     AI-ClaudeCat v4.0                        │
-│                 (基于 PixelHQ-bridge 方案)                   │
+│                     AI-ClaudeCat v4.1.2                     │
+│            (27 种工具支持，100% PixelHQ 覆盖)              │
 └─────────────────────────────────────────────────────────────┘
 
 数据源层
@@ -523,6 +530,39 @@ class MyAdapter(OutputAdapter):
 ---
 
 ## 版本历史
+
+### v4.1.2 (2026-02-06) - 🌟 PixelHQ 整合
+
+**核心亮点**:
+- ✅ **27 种工具支持** - 完全覆盖 PixelHQ-bridge 工具
+- ✅ **100% PixelHQ 覆盖** - 比参考项目更完善
+- ✅ **3 个新工具** - `EnterPlanMode`, `ExitPlanMode`, `NotebookEdit`
+- ✅ **MCP 通用支持** - 自动识别任意 MCP 服务器
+
+**新增功能**:
+- 📋 **计划模式支持** - `EnterPlanMode`, `ExitPlanMode`
+- 📓 **Notebook 编辑** - `NotebookEdit` 工具支持
+- 🎨 **特殊输出** - 新工具的自定义图标和输出
+- 📚 **完整文档** - 11 个分析文档和报告
+
+**技术验证**:
+- 🔍 **硬编码最佳实践** - 与 PixelHQ-bridge 一致
+- 📊 **工具命名分析** - 27 种工具命名规律深度分析
+- 🌉 **方案对比** - 与 PixelHQ-bridge 详细对比
+
+**文档新增**:
+- `CHANGELOG-v4.1.2.md` - 完整更新记录
+- `docs/TOOL-NAMING-ANALYSIS.md` - 工具命名规律
+- `docs/PIXELHQ-TOOL-MAPPING-ANALYSIS.md` - PixelHQ 对比
+- `docs/PIXELHQ-INTEGRATION-SUMMARY.md` - 整合总结
+- 多个深度分析报告
+
+### v4.1.1 (2026-02-06) - 🔧 配置优化
+
+**功能改进**:
+- 🔧 **配置完善** - 优化 Claude 配置检测
+- 📝 **日志级别** - 实现完整的日志级别系统
+- 🔌 **MCP 解析** - 通用 MCP 工具解析方案
 
 ### v4.0.0 (2026-02-06) - 🚀 重大重构
 

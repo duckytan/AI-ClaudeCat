@@ -1,17 +1,19 @@
 # AI-ClaudeCat 项目知识库
 
 **生成时间**: 2026-02-06  
-**版本**: v4.0.0  
-**状态**: 🚀 重构中（采用日志监控方案）  
+**版本**: v4.1.2  
+**状态**: 🚀 Production Ready（27 种工具支持，100% PixelHQ 覆盖）  
 **分支**: main
 
 ---
 
 ## 概述
 
-AI-ClaudeCat 是一款 v4.0 桌面宠物应用，通过**监控 Claude Code 的官方 JSONL 日志文件**，实时追踪 AI 的运行状态、工具调用和 Token 使用情况，并通过中间件输出到多种协议（WebSocket/HTTP/SQLite）。
+AI-ClaudeCat 是一款 v4.1.2 桌面宠物应用，通过**监控 Claude Code 的官方 JSONL 日志文件**，实时追踪 AI 的运行状态、工具调用和 Token 使用情况，并通过中间件输出到多种协议（WebSocket/HTTP/SQLite）。
 
 **核心方案**: 借鉴 [PixelHQ-bridge](https://github.com/example/pixelhq-bridge)，采用成熟的日志监控方案，替代 v3.1 的不可靠系统 API 检测。
+
+**v4.1.2 亮点**: 27 种工具支持，完全覆盖 PixelHQ-bridge 工具集合，并额外支持 MCP 通用前缀匹配。
 
 ---
 
@@ -28,8 +30,16 @@ AI-ClaudeCat/
 ├── config.json                         # 配置文件
 ├── requirements.txt                    # 依赖清单
 │
-├── docs/                               # 文档
-│   └── research_notes.md               # 技术研究笔记
+├── docs/                               # 文档 ⭐
+│   ├── TOOL-NAMING-ANALYSIS.md       # 工具命名规律分析 ⭐
+│   ├── PIXELHQ-TOOL-MAPPING-ANALYSIS.md # PixelHQ 方案对比 ⭐
+│   ├── PIXELHQ-INTEGRATION-SUMMARY.md  # 整合总结 ⭐
+│   ├── DEEP-ANALYSIS-SUMMARY.md      # 深度分析总结 ⭐
+│   ├── LOG-ANALYSIS-REPORT.md       # 日志分析报告 ⭐
+│   ├── MCP-UNIVERSAL-PARSING.md      # MCP 通用解析 ⭐
+│   ├── CHANGELOG-v4.1.1.md         # v4.1.1 更新
+│   ├── CHANGELOG-v4.1.2.md         # v4.1.2 更新 ⭐
+│   └── research_notes.md             # 技术研究笔记
 │
 ├── src/                               # 源代码
 │   ├── plugins/                        # 插件实现 ⭐

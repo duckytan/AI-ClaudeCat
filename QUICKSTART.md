@@ -1,6 +1,6 @@
 # AI-ClaudeCat 快速开始指南
 
-**版本**: v4.0.0  
+**版本**: v4.1.2  
 **预计时间**: 5 分钟
 
 ---
@@ -10,8 +10,8 @@
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/example/ai-claudecat.git
-cd ai-claudecat
+git clone https://github.com/duckytan/AI-ClaudeCat.git
+cd AI-ClaudeCat
 ```
 
 ### 2. 安装依赖

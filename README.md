@@ -4,10 +4,10 @@
 
 **Claude Code 智能状态监控工具**
 
-[![Version](https://img.shields.io/badge/version-4.0.0-blue.svg)](https://github.com/example/ai-claudecat)
+[![Version](https://img.shields.io/badge/version-4.1.2-blue.svg)](https://github.com/duckytan/AI-ClaudeCat)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8%2B-brightgreen.svg)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/status-refactoring-yellow.svg)](https://github.com/example/ai-claudecat)
+[![Status](https://img.shields.io/badge/status-production-ready-green.svg)](https://github.com/duckytan/AI-ClaudeCat)
 
 </div>
 
@@ -19,7 +19,9 @@ AI-ClaudeCat 是一款专为 **Claude Code** 设计的智能状态监控工具�
 
 ### 🎯 核心特性
 
+- ✅ **27 种工具支持** - 100% 覆盖 PixelHQ-bridge 工具，包括计划模式、Notebook 编辑
 - ✅ **工具级精度** - 不仅知道 AI 在"工作"，还知道在"读文件"还是"写代码"
+- ✅ **MCP 通用支持** - 自动识别任意 MCP 服务器工具（`mcp__*` 前缀匹配）
 - ✅ **可靠性高** - 使用 Claude Code 官方日志数据源（格式稳定，已验证）
 - ✅ **隐私保护** - 内置白名单过滤机制，只输出元数据
 - ✅ **多输出协议** - WebSocket、HTTP REST API、SQLite 存储
@@ -34,8 +36,8 @@ AI-ClaudeCat 是一款专为 **Claude Code** 设计的智能状态监控工具�
 
 ```bash
 # 克隆仓库
-git clone https://github.com/example/ai-claudecat.git
-cd ai-claudecat
+git clone https://github.com/duckytan/AI-ClaudeCat.git
+cd AI-ClaudeCat
 
 # 安装依赖
 pip install -r requirements.txt
@@ -49,7 +51,7 @@ python main.py
 
 **输出示例**:
 ```
-=== AI-ClaudeCat v4.0 ===
+=== AI-ClaudeCat v4.1.2 ===
 Status monitoring for Claude Code
 
 ✓ Claude Code detected at C:\Users\YourName\.claude\projects
@@ -105,18 +107,44 @@ AI-ClaudeCat 可以检测 8 种状态：
 
 ## 🛠️ 工具调用监控
 
-支持的工具类型：
+支持的工具类型（27 种）：
 
+### **文件 I/O**
 - 📖 **Read** - 读取文件
 - ✏️ **Write** - 写入文件
 - 🖊️ **Edit** - 编辑文件
+
+### **执行类**
+- 💻 **Bash** - 执行命令
+- 🛑 **KillShell** - 终止 Shell 进程
+
+### **搜索类**
 - 🔍 **Grep** - 搜索代码
 - 📁 **Glob** - 文件匹配
-- 💻 **Bash** - 执行命令
 - 🌐 **WebFetch** - 网络请求
 - 🔎 **WebSearch** - 网络搜索
+
+### **Agent 类**
 - 🤖 **Task** - 派生子 Agent
+- ⏳ **TaskOutput** - 等待子 Agent 输出
+- 🎯 **Skill** - 加载技能
+
+### **计划与任务管理**
 - ✅ **TodoWrite** - 写入待办事项
+- 📋 **EnterPlanMode** - 进入计划模式 ⭐
+- ✅ **ExitPlanMode** - 退出计划模式 ⭐
+
+### **交互类**
+- ❓ **AskUserQuestion** - 等待用户输入
+
+### **Notebook 类**
+- 📓 **NotebookEdit** - Notebook 编辑 ⭐
+
+### **MCP 工具**
+- 🔌 **ListMcpResourcesTool** - MCP 资源列表
+- 🔗 **mcp__\*** - 通用 MCP 工具支持（自动识别）
+
+**⭐ v4.1.2 新增工具（来自 PixelHQ-bridge）**
 
 **示例输出**:
 ```json
@@ -158,7 +186,7 @@ AI-ClaudeCat 可以检测 8 种状态：
 
 ## 🏗️ 技术架构
 
-### v4.0 架构
+### v4.1.2 架构
 
 ```
 数据源: ~/.claude/projects/**/*.jsonl (官方日志)
@@ -190,10 +218,22 @@ AI-ClaudeCat 可以检测 8 种状态：
 
 ## 📚 文档
 
+### **核心文档**
 - 📘 [CLAUDE.md](./CLAUDE.md) - 完整项目文档
 - 📗 [AGENTS.md](./AGENTS.md) - 项目知识库（代码地图）
 - 📙 [QUICKSTART.md](./QUICKSTART.md) - 快速开始指南
 - 📕 [CONFIG.md](./CONFIG.md) - 配置说明
+
+### **版本文档**
+- 📝 [CHANGELOG-v4.1.2.md](./CHANGELOG-v4.1.2.md) - 最新版本更新
+- 📄 [CHANGELOG-v4.1.1.md](./CHANGELOG-v4.1.1.md) - v4.1.1 更新
+
+### **分析文档**
+- 🔍 [工具命名分析](./docs/TOOL-NAMING-ANALYSIS.md) - 27 种工具命名规律
+- 🌉 [PixelHQ 对比](./docs/PIXELHQ-TOOL-MAPPING-ANALYSIS.md) - 与 PixelHQ-bridge 对比
+- 📊 [深度分析报告](./docs/DEEP-ANALYSIS-SUMMARY.md) - 项目深度分析
+- 📈 [日志分析](./docs/LOG-ANALYSIS-REPORT.md) - Claude Code 日志分析
+- 🔌 [MCP 解析](./docs/MCP-UNIVERSAL-PARSING.md) - MCP 通用解析方案
 
 ---
 
