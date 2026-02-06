@@ -112,6 +112,9 @@ class Application:
             claude_config = self.config.get('claude', {})
             plugin_config = {**claude_log_config, **claude_config}
             
+            # 传递全局 debug 配置
+            plugin_config['debug'] = self.config.get('debug', False)
+            
             plugin = ClaudeLogPlugin(plugin_config)
             self.plugins.append(plugin)
     

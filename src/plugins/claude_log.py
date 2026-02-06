@@ -27,26 +27,52 @@ class ClaudeLogPlugin(BasePlugin):
     """Claude Code 日志监控插件"""
     
     # 工具名称 → 状态映射
+    # 来源: Claude Code 官方工具 + PixelHQ-bridge 验证
     TOOL_STATUS_MAP = {
-        'thinking': Status.THINKING,
-        'text': Status.WORKING,
-        'Read': Status.WORKING,
-        'Write': Status.WORKING,
-        'Edit': Status.WORKING,
-        'Bash': Status.EXECUTING,
-        'Grep': Status.WORKING,
-        'Glob': Status.WORKING,
-        'WebFetch': Status.WORKING,
-        'WebSearch': Status.WORKING,
-        'Task': Status.WORKING,
-        'TodoWrite': Status.WORKING,
+        # === AI 思考与输出 ===
+        'thinking': Status.THINKING,        # AI 思考中
+        'text': Status.WORKING,             # AI 文本输出
+        
+        # === 文件 I/O ===
+        'Read': Status.WORKING,             # 读取文件
+        'Write': Status.WORKING,            # 写入文件
+        'Edit': Status.WORKING,             # 编辑文件
+        
+        # === 执行类 ===
+        'Bash': Status.EXECUTING,           # 执行 Bash 命令
+        'KillShell': Status.EXECUTING,      # 终止 Shell 进程
+        
+        # === 搜索类 ===
+        'Grep': Status.WORKING,             # 代码搜索
+        'Glob': Status.WORKING,             # 文件匹配
+        'WebFetch': Status.WORKING,         # 网络请求
+        'WebSearch': Status.WORKING,        # 网络搜索
+        
+        # === Agent 类 ===
+        'Task': Status.WORKING,             # 启动子 Agent
+        'TaskOutput': Status.WORKING,       # 任务输出（等待子 Agent）
         'Skill': Status.WORKING,            # Skill 工具
+        
+        # === 计划与任务管理 ===
+        'TodoWrite': Status.WORKING,        # 写入待办事项
+        'EnterPlanMode': Status.WORKING,    # 进入计划模式（PixelHQ）
+        'ExitPlanMode': Status.WORKING,     # 退出计划模式（PixelHQ）
+        
+        # === 交互类 ===
         'AskUserQuestion': Status.IDLE,     # 等待用户输入
-        'TaskOutput': Status.WORKING,       # 任务输出
+        
+        # === Notebook 类 ===
+        'NotebookEdit': Status.WORKING,     # Notebook 编辑（PixelHQ）
+        
+        # === MCP 工具 ===
         'ListMcpResourcesTool': Status.WORKING,  # MCP 资源列表
     }
     
-    # MCP 工具模式匹配（所有 MCP 工具都以 mcp__ 开头）
+    # MCP 工具前缀（通用匹配，支持任何 MCP 服务器）
+    # 格式: mcp__<server-name>__<tool-name>
+    # 示例: mcp__open-websearch__search
+    #       mcp__Playwright__browser_navigate
+    #       mcp__context7__query-docs
     MCP_TOOL_PREFIX = 'mcp__'
     
     # 可忽略的错误类型（临时性错误，无需用户关注）
@@ -82,6 +108,9 @@ class ClaudeLogPlugin(BasePlugin):
         
         # 错误过滤配置
         self.show_all_errors = config.get('show_all_errors', False) if config else False
+        
+        # Debug 模式（控制日志详细程度）
+        self.debug = config.get('debug', False) if config else False
         
         # 增量读取位置记录
         self.file_positions: Dict[str, int] = {}
@@ -140,6 +169,9 @@ class ClaudeLogPlugin(BasePlugin):
         
         self.running = True
         print(f"[{self.metadata.name}] [OK] Started, monitoring: {self.projects_dir}")
+        
+        if not self.debug:
+            print(f"[{self.metadata.name}] [INFO] Debug mode OFF - showing only meaningful events")
     
     async def stop(self):
         """停止插件"""
@@ -169,13 +201,15 @@ class ClaudeLogPlugin(BasePlugin):
         log_files = glob.glob(pattern, recursive=True)
         
         if not log_files:
-            print(f"[{self.metadata.name}] No JSONL logs found")
+            if self.debug:
+                print(f"[{self.metadata.name}] No JSONL logs found")
             return
         
         # 获取最新的日志文件
         latest_file = max(log_files, key=os.path.getmtime)
         
-        print(f"[{self.metadata.name}] Found {len(log_files)} logs, latest: {latest_file}")
+        if self.debug:
+            print(f"[{self.metadata.name}] Found {len(log_files)} logs, latest: {latest_file}")
         
         # 初始化所有文件的读取位置（而不是只读取最新的）
         for file_path in log_files:
@@ -185,7 +219,8 @@ class ClaudeLogPlugin(BasePlugin):
             except OSError:
                 pass
         
-        print(f"[{self.metadata.name}] Initialized {len(self.file_positions)} file positions")
+        if self.debug:
+            print(f"[{self.metadata.name}] Initialized {len(self.file_positions)} file positions")
         
         # 读取最新文件的最后几行（初始化状态）
         await self._read_full_file(latest_file)
@@ -212,7 +247,8 @@ class ClaudeLogPlugin(BasePlugin):
         # 保存当前事件循环引用 - 在 async 上下文中获取
         try:
             event_handler.loop = asyncio.get_running_loop()
-            print(f"[{self.metadata.name}] [OK] Event loop acquired")
+            if self.debug:
+                print(f"[{self.metadata.name}] [OK] Event loop acquired")
         except RuntimeError:
             print(f"[{self.metadata.name}] ERROR: No running event loop!")
             return
@@ -221,8 +257,9 @@ class ClaudeLogPlugin(BasePlugin):
         self.observer.schedule(event_handler, str(self.projects_dir), recursive=True)
         self.observer.start()
         
-        print(f"[{self.metadata.name}] [WATCH] Directory: {self.projects_dir}")
-        print(f"[{self.metadata.name}] [WATCH] Monitoring *.jsonl files recursively...")
+        if self.debug:
+            print(f"[{self.metadata.name}] [WATCH] Directory: {self.projects_dir}")
+            print(f"[{self.metadata.name}] [WATCH] Monitoring *.jsonl files recursively...")
     
     async def _handle_file_change(self, file_path: str):
         """处理文件变化"""
@@ -238,15 +275,19 @@ class ClaudeLogPlugin(BasePlugin):
         # 获取上次读取位置
         last_position = self.file_positions.get(file_path, 0)
         
-        print(f"[{self.metadata.name}] [INFO] File: {Path(file_path).name} - Size: {current_size} bytes (was: {last_position})")
+        if self.debug:
+            print(f"[{self.metadata.name}] [INFO] File: {Path(file_path).name} - Size: {current_size} bytes (was: {last_position})")
         
         if current_size <= last_position:
-            print(f"[{self.metadata.name}] [SKIP] No new content")
+            if self.debug:
+                print(f"[{self.metadata.name}] [SKIP] No new content")
             return  # 文件未增长
         
         # 增量读取新行
         new_lines = self._read_new_lines(file_path, last_position)
-        print(f"[{self.metadata.name}] [READ] {len(new_lines)} new lines")
+        
+        if self.debug:
+            print(f"[{self.metadata.name}] [READ] {len(new_lines)} new lines")
         
         # 更新位置
         self.file_positions[file_path] = current_size
@@ -302,7 +343,7 @@ class ClaudeLogPlugin(BasePlugin):
                 # 回合结束事件（任务完成）
                 if subtype == 'turn_duration':
                     duration_ms = event.get('durationMs', 0)
-                    print(f"[{self.metadata.name}] [COMPLETE] Turn finished ({duration_ms}ms)")
+                    print(f"[{self.metadata.name}] ✅ Turn completed ({duration_ms}ms)")
                     await self._update_status(
                         Status.IDLE,
                         confidence=0.95,
@@ -341,7 +382,7 @@ class ClaudeLogPlugin(BasePlugin):
                 # 本地命令执行事件
                 elif subtype == 'local_command':
                     command = event.get('command', 'unknown')
-                    print(f"[{self.metadata.name}] [EXECUTING] Local command: {command}")
+                    print(f"[{self.metadata.name}] 🔧 Bash: {os.path.basename(command)}")
                     await self._update_status(
                         Status.EXECUTING,
                         confidence=0.90,
@@ -353,7 +394,8 @@ class ClaudeLogPlugin(BasePlugin):
             
             elif event_type == 'file-history-snapshot':
                 # 文件历史快照（会话开始）
-                print(f"[{self.metadata.name}] [DEBUG] File history snapshot")
+                if self.debug:
+                    print(f"[{self.metadata.name}] [DEBUG] File history snapshot")
                 await self._update_status(
                     Status.IDLE,
                     confidence=0.90,
@@ -376,7 +418,7 @@ class ClaudeLogPlugin(BasePlugin):
         
         # 检查是否是回合结束（等待用户输入）
         if stop_reason == 'end_turn':
-            print(f"[{self.metadata.name}] [IDLE] Waiting for user input (stop_reason: end_turn)")
+            print(f"[{self.metadata.name}] ⏸️  Waiting for user input")
             await self._update_status(
                 Status.IDLE,
                 confidence=0.95,
@@ -388,7 +430,7 @@ class ClaudeLogPlugin(BasePlugin):
             return
         
         elif stop_reason == 'stop_sequence':
-            print(f"[{self.metadata.name}] [IDLE] Waiting for user input (stop_reason: stop_sequence)")
+            print(f"[{self.metadata.name}] ⏸️  Waiting for user input")
             await self._update_status(
                 Status.IDLE,
                 confidence=0.90,
@@ -399,11 +441,19 @@ class ClaudeLogPlugin(BasePlugin):
             )
             return
         
+        elif stop_reason == 'tool_use':
+            # AI 调用工具后暂停，等待工具执行结果
+            # 保持 WORKING 状态，不切换到 IDLE
+            if self.debug:
+                print(f"[{self.metadata.name}] [DEBUG] Stop reason: tool_use (waiting for tool result)")
+            return
+        
         for block in content:
             block_type = block.get('type')
             
             if block_type == 'thinking':
                 # AI 思考中
+                print(f"[{self.metadata.name}] 🤔 Thinking...")
                 await self._update_status(
                     Status.THINKING,
                     confidence=0.95,
@@ -418,20 +468,68 @@ class ClaudeLogPlugin(BasePlugin):
                 tool_name = block.get('name', '')
                 tool_input = block.get('input', {})
                 
-                # 检查是否是 MCP 工具
+                # 检查是否是 MCP 工具（通用前缀匹配，支持任何 MCP 服务器）
                 is_mcp_tool = tool_name.startswith(self.MCP_TOOL_PREFIX)
                 
                 if is_mcp_tool:
-                    # 解析 MCP 工具：mcp__server-name__tool-name
+                    # 解析 MCP 工具格式：mcp__<server-name>__<tool-name>
+                    # 支持任意服务器和工具名称，无需硬编码
                     parts = tool_name.split('__')
                     if len(parts) >= 3:
+                        # 标准格式：mcp__server__tool
                         server_name = parts[1]
-                        actual_tool = parts[2]
-                    else:
+                        actual_tool = '__'.join(parts[2:])  # 支持工具名中包含 '__'
+                    elif len(parts) == 2:
+                        # 非标准格式：mcp__tool（无服务器名）
                         server_name = 'unknown'
-                        actual_tool = tool_name
+                        actual_tool = parts[1]
+                    else:
+                        # 异常格式
+                        server_name = 'unknown'
+                        actual_tool = tool_name[len(self.MCP_TOOL_PREFIX):]
                     
-                    print(f"[{self.metadata.name}] [MCP] Tool: {actual_tool} (server: {server_name})")
+                    print(f"[{self.metadata.name}] 🔌 MCP: {actual_tool} ({server_name})")
+                else:
+                    # 普通工具
+                    safe_context = self._extract_safe_context(tool_name, tool_input)
+                    
+                    # 特殊工具的自定义输出
+                    if tool_name == 'TaskOutput':
+                        task_id = tool_input.get('task_id', 'unknown')
+                        timeout = tool_input.get('timeout', 0) // 1000
+                        print(f"[{self.metadata.name}] ⏳ Waiting for Agent output (task: {task_id}, timeout: {timeout}s)")
+                    
+                    elif tool_name == 'KillShell':
+                        shell_id = tool_input.get('shell_id', 'unknown')
+                        print(f"[{self.metadata.name}] 🛑 Killing Shell: {shell_id}")
+                    
+                    elif tool_name == 'Skill':
+                        skill_name = tool_input.get('skill', 'unknown')
+                        print(f"[{self.metadata.name}] 🎯 Loading Skill: {skill_name}")
+                    
+                    elif tool_name == 'Task':
+                        print(f"[{self.metadata.name}] 🚀 Launching sub-Agent")
+                    
+                    elif tool_name == 'AskUserQuestion':
+                        print(f"[{self.metadata.name}] ❓ Asking user question")
+                    
+                    elif tool_name == 'EnterPlanMode':
+                        print(f"[{self.metadata.name}] 📋 Entering Plan Mode")
+                    
+                    elif tool_name == 'ExitPlanMode':
+                        print(f"[{self.metadata.name}] ✅ Exiting Plan Mode")
+                    
+                    elif tool_name == 'NotebookEdit':
+                        notebook_path = tool_input.get('notebook_path', 'unknown')
+                        print(f"[{self.metadata.name}] 📓 Editing Notebook: {os.path.basename(notebook_path)}")
+                    
+                    else:
+                        # 默认输出
+                        context_str = ', '.join(f"{k}={v}" for k, v in safe_context.items()) if safe_context else ''
+                        if context_str:
+                            print(f"[{self.metadata.name}] 🔧 {tool_name}: {context_str}")
+                        else:
+                            print(f"[{self.metadata.name}] 🔧 {tool_name}")
                 
                 # 推断状态
                 status = self.TOOL_STATUS_MAP.get(tool_name, Status.WORKING)
@@ -487,7 +585,7 @@ class ClaudeLogPlugin(BasePlugin):
                         break
             
             if has_question:
-                print(f"[{self.metadata.name}] [IDLE] Likely waiting for user (question detected)")
+                print(f"[{self.metadata.name}] ⏸️  Waiting for user (question detected)")
                 await self._update_status(
                     Status.IDLE,
                     confidence=0.85,
@@ -499,64 +597,128 @@ class ClaudeLogPlugin(BasePlugin):
     
     async def _handle_progress_event(self, event: Dict):
         """
-        处理 MCP 工具进度事件
+        处理进度事件（MCP/Bash/Hook）
         
         进度事件格式：
         {
             "type": "progress",
             "data": {
-                "type": "mcp_progress",
+                "type": "mcp_progress" | "bash_progress" | "hook_progress",
                 "status": "started" | "completed",
-                "serverName": "open-websearch",
-                "toolName": "search",
-                "elapsedTimeMs": 42324  // only in completed
+                ...
             }
         }
         """
         data = event.get('data', {})
-        if data.get('type') != 'mcp_progress':
+        progress_type = data.get('type')
+        
+        if not progress_type:
             return
         
         status = data.get('status')
-        server_name = data.get('serverName', 'unknown')
-        tool_name = data.get('toolName', 'unknown')
-        elapsed_ms = data.get('elapsedTimeMs', 0)
         
-        if status == 'started':
-            print(f"[{self.metadata.name}] [MCP] Started: {tool_name} (server: {server_name})")
-            await self._update_status(
-                Status.WORKING,
-                confidence=0.85,
-                details={
-                    'event': 'mcp_progress',
-                    'status': 'started',
-                    'mcp': {
-                        'server': server_name,
-                        'tool': tool_name
+        # MCP 工具进度
+        if progress_type == 'mcp_progress':
+            server_name = data.get('serverName', 'unknown')
+            tool_name = data.get('toolName', 'unknown')
+            elapsed_ms = data.get('elapsedTimeMs', 0)
+            
+            if status == 'started':
+                print(f"[{self.metadata.name}] 🔌 MCP Started: {tool_name} ({server_name})")
+                await self._update_status(
+                    Status.WORKING,
+                    confidence=0.85,
+                    details={
+                        'event': 'mcp_progress',
+                        'status': 'started',
+                        'mcp': {
+                            'server': server_name,
+                            'tool': tool_name
+                        }
                     }
-                }
-            )
+                )
+            
+            elif status == 'completed':
+                print(f"[{self.metadata.name}] 🔌 MCP Completed: {tool_name} ({elapsed_ms}ms)")
+                await self._update_status(
+                    Status.WORKING,
+                    confidence=0.80,
+                    details={
+                        'event': 'mcp_progress',
+                        'status': 'completed',
+                        'elapsed_ms': elapsed_ms,
+                        'mcp': {
+                            'server': server_name,
+                            'tool': tool_name
+                        }
+                    }
+                )
         
-        elif status == 'completed':
-            print(f"[{self.metadata.name}] [MCP] Completed: {tool_name} ({elapsed_ms}ms)")
-            await self._update_status(
-                Status.WORKING,
-                confidence=0.80,
-                details={
-                    'event': 'mcp_progress',
-                    'status': 'completed',
-                    'elapsed_ms': elapsed_ms,
-                    'mcp': {
-                        'server': server_name,
-                        'tool': tool_name
+        # Bash 命令进度
+        elif progress_type == 'bash_progress':
+            command = data.get('command', 'unknown')
+            
+            if status == 'started':
+                print(f"[{self.metadata.name}] 🔧 Bash Started: {os.path.basename(command)}")
+                await self._update_status(
+                    Status.EXECUTING,
+                    confidence=0.90,
+                    details={
+                        'event': 'bash_progress',
+                        'status': 'started',
+                        'command': os.path.basename(command)
                     }
-                }
-            )
+                )
+            
+            elif status == 'completed':
+                exit_code = data.get('exitCode', 0)
+                elapsed_ms = data.get('elapsedTimeMs', 0)
+                
+                if exit_code == 0:
+                    print(f"[{self.metadata.name}] ✅ Bash Completed: {os.path.basename(command)} ({elapsed_ms}ms)")
+                    # 成功完成，保持当前状态（不触发新事件，避免噪音）
+                else:
+                    print(f"[{self.metadata.name}] ❌ Bash Failed: {os.path.basename(command)} (exit code: {exit_code})")
+                    await self._update_status(
+                        Status.ERROR,
+                        confidence=0.90,
+                        details={
+                            'event': 'bash_progress',
+                            'status': 'failed',
+                            'command': os.path.basename(command),
+                            'exit_code': exit_code,
+                            'elapsed_ms': elapsed_ms
+                        }
+                    )
+        
+        # Git Hook 进度
+        elif progress_type == 'hook_progress':
+            hook_name = data.get('hookName', 'unknown')
+            
+            if status == 'started':
+                print(f"[{self.metadata.name}] 🪝 Git Hook: {hook_name}")
+                await self._update_status(
+                    Status.EXECUTING,
+                    confidence=0.85,
+                    details={
+                        'event': 'hook_progress',
+                        'status': 'started',
+                        'hook': hook_name
+                    }
+                )
+            
+            elif status == 'completed':
+                elapsed_ms = data.get('elapsedTimeMs', 0)
+                if self.debug:
+                    print(f"[{self.metadata.name}] [DEBUG] Hook Completed: {hook_name} ({elapsed_ms}ms)")
+                # Hook 完成后，保持当前状态（不触发新事件）
     
     async def _handle_user_event(self, event: Dict, file_path: str):
         """处理用户输入事件"""
         message = event.get('message', {})
         content = message.get('content', [])
+        
+        print(f"[{self.metadata.name}] 🚀 User input received")
         
         await self._update_status(
             Status.RUNNING,
@@ -568,21 +730,56 @@ class ClaudeLogPlugin(BasePlugin):
         )
     
     async def _handle_summary_event(self, event: Dict):
-        """处理会话总结事件"""
-        # 更新 Token 统计
-        usage = event.get('usage', {})
-        self._update_tokens(usage)
+        """
+        处理会话总结事件
         
-        # Summary 事件通常表示会话结束，进入 IDLE
-        print(f"[{self.metadata.name}] [SUMMARY] Session completed")
-        await self._update_status(
-            Status.IDLE,
-            confidence=0.85,
-            details={
-                'event': 'summary',
-                'total_tokens': usage.get('input_tokens', 0) + usage.get('output_tokens', 0)
-            }
-        )
+        格式 1 (System Summary):
+        {
+            "type": "summary",
+            "usage": {...}
+        }
+        
+        格式 2 (Projects Summary):
+        {
+            "type": "summary",
+            "summary": "Task Description",
+            "leafUuid": "xxx"
+        }
+        """
+        # 格式 1: 包含 Token 统计
+        usage = event.get('usage', {})
+        if usage:
+            self._update_tokens(usage)
+            total_tokens = usage.get('input_tokens', 0) + usage.get('output_tokens', 0)
+            
+            print(f"[{self.metadata.name}] 📊 Session completed (Total tokens: {total_tokens:,})")
+            await self._update_status(
+                Status.IDLE,
+                confidence=0.85,
+                details={
+                    'event': 'summary',
+                    'total_tokens': total_tokens
+                }
+            )
+        
+        # 格式 2: 项目总结（标题）
+        else:
+            summary_text = event.get('summary', '')
+            leaf_uuid = event.get('leafUuid', '')
+            
+            if self.debug:
+                print(f"[{self.metadata.name}] [DEBUG] Project summary: {summary_text}")
+            
+            # 项目总结通常表示一个完整的会话结束
+            await self._update_status(
+                Status.IDLE,
+                confidence=0.80,
+                details={
+                    'event': 'project_summary',
+                    'summary': summary_text,
+                    'leaf_uuid': leaf_uuid
+                }
+            )
     
     def _parse_file_path(self, file_path: str) -> Dict[str, any]:
         """
@@ -699,13 +896,14 @@ class LogFileHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         
-        # 调试输出
-        if event.src_path.endswith('.jsonl'):
-            print(f"[Watchdog] [CHANGE] File changed: {event.src_path}")
+        # 只在 Debug 模式显示 Watchdog 事件
+        if event.src_path.endswith('.jsonl') and self.plugin.debug:
+            print(f"[Watchdog] File changed: {event.src_path}")
         
         # 从其他线程提交到事件循环
         if self.loop is None:
-            print(f"[Watchdog] [WARNING] No event loop!")
+            if self.plugin.debug:
+                print(f"[Watchdog] WARNING: No event loop!")
             return
         
         # 线程安全地调度协程

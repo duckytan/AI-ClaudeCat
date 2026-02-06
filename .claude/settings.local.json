@@ -5,7 +5,12 @@
       "WebSearch",
       "Bash(curl:*)",
       "mcp__open-websearch__search",
-      "mcp__exa__web_search_exa"
+      "mcp__exa__web_search_exa",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(tasklist:*)",
+      "Bash(wmic:*)",
+      "Bash(powershell:*)"
     ]
   }
 }
