@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 # 导入核心模块
-from src.plugins import ClaudeLogPlugin
+from src.plugins import ClaudeLogPlugin, ClaudeProcessPlugin
 from src.middleware import Middleware
 from src.adapters import WebSocketAdapter, HTTPAdapter, StdoutAdapter
 
@@ -116,6 +116,12 @@ class Application:
             plugin_config['debug'] = self.config.get('debug', False)
             
             plugin = ClaudeLogPlugin(plugin_config)
+            self.plugins.append(plugin)
+        
+        # ClaudeProcessPlugin
+        claude_process_config = plugins_config.get('claude_process', {})
+        if claude_process_config.get('enabled', False):
+            plugin = ClaudeProcessPlugin(claude_process_config)
             self.plugins.append(plugin)
     
     def _create_adapters(self):

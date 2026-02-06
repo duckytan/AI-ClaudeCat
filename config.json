@@ -17,6 +17,11 @@
       "show_all_errors": false,
       "track_subagents": true,
       "generate_fine_grained_events": true
+    },
+    "claude_process": {
+      "enabled": true,
+      "check_interval": 1.0,
+      "priority": 1
     }
   },
   
