@@ -1,0 +1,61 @@
+{
+  "version": "4.1.0",
+  "description": "AI-ClaudeCat configuration (v4.1 - 增强版)",
+  "debug": false,
+  
+  "claude": {
+    "projects_dir": "auto",
+    "watch_debounce_ms": 50,
+    "session_ttl_minutes": 10
+  },
+  
+  "plugins": {
+    "claude_log": {
+      "enabled": true,
+      "check_interval": 0.5,
+      "priority": 10,
+      "show_all_errors": false,
+      "track_subagents": true,
+      "generate_fine_grained_events": true
+    }
+  },
+  
+  "middleware": {
+    "privacy_filter": {
+      "enabled": true,
+      "level": "internal",
+      "dev_mode": false,
+      "whitelist": [
+        "method", "event", "tool", "context",
+        "session_id", "status", "confidence",
+        "tokens", "agent_type", "pattern",
+        "agent_id", "is_subagent", "project"
+      ]
+    },
+    "token_stats": {
+      "enabled": true
+    },
+    "session_manager": {
+      "enabled": true,
+      "timeout_minutes": 10
+    }
+  },
+  
+  "adapters": {
+    "websocket": {
+      "enabled": true,
+      "host": "127.0.0.1",
+      "port": 8765
+    },
+    "http": {
+      "enabled": true,
+      "host": "127.0.0.1",
+      "port": 8080,
+      "cors": true
+    },
+    "stdout": {
+      "enabled": true,
+      "format": "simple"
+    }
+  }
+}
